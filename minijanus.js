@@ -54,13 +54,15 @@ JanusPluginHandle.prototype.sendTrickle = function(candidate) {
  *
  * See https://janus.conf.meetecho.com/docs/rest.html#sessions.
  **/
-function JanusSession(output) {
+function JanusSession(output, options) {
     this.output = output;
     this.id = undefined;
     this.nextTxId = 0;
     this.txns = {};
-    this.timeoutMs = 10000;
-    this.keepaliveMs = 30000;
+    this.options = options || {
+        timeoutMs: 10000,
+        keepaliveMs: 30000
+    };
 }
 
 /** Creates this session on the Janus server and sets its ID. **/
@@ -114,8 +116,8 @@ JanusSession.prototype.send = function(signal) {
     }, signal);
     return new Promise((resolve, reject) => {
         var timeout = null;
-        if (this.timeoutMs) {
-            timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.timeoutMs);
+        if (this.options.timeoutMs) {
+            timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.options.timeoutMs);
         }
         this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout };
         this.output(JSON.stringify(signal));
@@ -127,7 +129,9 @@ JanusSession.prototype._resetKeepalive = function() {
     if (this.keepaliveTimeout) {
         clearTimeout(this.keepaliveTimeout);
     }
-    this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.keepaliveMs);
+    if (this.options.keepaliveMs) {
+        this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
+    }
 };
 
 JanusSession.prototype._keepalive = function() {
