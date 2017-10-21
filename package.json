@@ -1,0 +1,25 @@
+{
+  "name": "minijanus",
+  "version": "1.0.0",
+  "description": "Really simple and minimal wrapper for talking to the Janus signalling API.",
+  "main": "minijanus.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mquander/minijanus.js.git"
+  },
+  "keywords": [
+    "janus"
+  ],
+  "author": "Marshall Quander <marshall@quander.me>",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/mquander/minijanus.js/issues"
+  },
+  "homepage": "https://github.com/mquander/minijanus.js#readme",
+  "devDependencies": {
+    "browserify": "^14.5.0"
+  },
+  "scripts": {
+    "build": "browserify minijanus.js --standalone Minijanus > bundle.js"
+  }
+}
