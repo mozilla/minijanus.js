@@ -15,3 +15,48 @@ If you want a batteries-included wrapper, you should use the one distributed by 
 [api-docs]: https://janus.conf.meetecho.com/docs/rest.html
 [janus.js]: https://github.com/meetecho/janus-gateway/blob/master/html/janus.js
 [janus-plugin-sfu]: https://github.com/mquander/janus-plugin-sfu
+
+## Example
+
+Require `minijanus` in Node, or link to bundle.js in a browser. Then:
+
+```javascript
+var ws = new WebSocket("ws://localhost:8188", "janus-protocol");
+ws.addEventListener("open", () => {
+   var session = new Minijanus.JanusSession(ws.send.bind(ws));
+   ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
+   session.create().then(() => establishConnection(session));
+});
+
+function establishConnection(session) {
+    var conn = new RTCPeerConnection({});
+    var handle = new Minijanus.JanusPluginHandle(session, conn);
+    var publisher = handle.attach("janus.plugin.sfu").then(() => {
+        var iceReady = handle.negotiateIce();
+        var unreliableCh = conn.createDataChannel("unreliable", { ordered: false, maxRetransmits: 0 });
+        var reliableCh = conn.createDataChannel("reliable", { ordered: true });
+        var mediaReady = navigator.mediaDevices.getUserMedia({ audio: true });
+        var offerReady = mediaReady
+            .then(media => {
+                conn.addStream(media);
+                return conn.createOffer({ audio: true });
+            }, () => conn.createOffer());
+        var localReady = offerReady.then(conn.setLocalDescription.bind(conn));
+        var remoteReady = offerReady
+            .then(handle.sendJsep.bind(handle))
+            .then(answer => conn.setRemoteDescription(answer.jsep));
+        return Promise.all([iceReady, localReady, remoteReady]).then(() => {
+            console.info("Cnnection established: ", handle);
+            return handle;
+        });
+    });
+}
+```
+
+## Building
+
+To generate bundle.js:
+
+```
+$ npm run build
+```
