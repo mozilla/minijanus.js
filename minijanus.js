@@ -5,22 +5,21 @@
  *
  * See https://janus.conf.meetecho.com/docs/rest.html#handles.
  **/
-function JanusPluginHandle(session, conn) {
+function JanusPluginHandle(session) {
     this.session = session;
-    this.conn = conn;
     this.id = undefined;
 }
 
 /** Attaches this handle to the Janus server and sets its ID. **/
-JanusPluginHandle.prototype.attach = function(pluginName) {
-    var payload = { janus: "attach", plugin: pluginName, "force-bundle": true, "force-rtcp-mux": true };
+JanusPluginHandle.prototype.attach = function(plugin) {
+    var payload = { janus: "attach", plugin: plugin, "force-bundle": true, "force-rtcp-mux": true };
     return this.session.send(payload).then(resp => {
         this.id = resp.data.id;
         return resp;
     });
 };
 
-/** Detaches this plugin. Doesn't touch the RTCPeerConnection. **/
+/** Detaches this handle. **/
 JanusPluginHandle.prototype.detach = function() {
     return this.send({ janus: "detach" });
 };
@@ -44,20 +43,9 @@ JanusPluginHandle.prototype.sendJsep = function(jsep) {
     return this.send({ janus: "message", body: {}, jsep: jsep });
 };
 
-/**
- * Sets up ICE negotiation on the connection for this handle, sending a signal for each new candidate. Returns a promise
- * that resolves when we've sent all of our ICE candidates.
- **/
-JanusPluginHandle.prototype.negotiateIce = function() {
-    return new Promise((resolve, reject) => {
-        this.conn.addEventListener("icecandidate", ev => {
-            this.send({ janus: "trickle",  candidate: ev.candidate || null }).then(() => {
-                if (!ev.candidate) { // this was the last candidate on our end and now they received it
-                    resolve();
-                }
-            });
-        });
-    });
+/** Sends an ICE trickle candidate associated with this handle. **/
+JanusPluginHandle.prototype.sendTrickle = function(candidate) {
+    return this.send({ janus: "trickle",  candidate: candidate });
 };
 
 /**
