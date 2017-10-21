@@ -6,22 +6,21 @@
  *
  * See https://janus.conf.meetecho.com/docs/rest.html#handles.
  **/
-function JanusPluginHandle(session, conn) {
+function JanusPluginHandle(session) {
     this.session = session;
-    this.conn = conn;
     this.id = undefined;
 }
 
 /** Attaches this handle to the Janus server and sets its ID. **/
-JanusPluginHandle.prototype.attach = function(pluginName) {
-    var payload = { janus: "attach", plugin: pluginName, "force-bundle": true, "force-rtcp-mux": true };
+JanusPluginHandle.prototype.attach = function(plugin) {
+    var payload = { janus: "attach", plugin: plugin, "force-bundle": true, "force-rtcp-mux": true };
     return this.session.send(payload).then(resp => {
         this.id = resp.data.id;
         return resp;
     });
 };
 
-/** Detaches this plugin. Doesn't touch the RTCPeerConnection. **/
+/** Detaches this handle. **/
 JanusPluginHandle.prototype.detach = function() {
     return this.send({ janus: "detach" });
 };
@@ -45,20 +44,9 @@ JanusPluginHandle.prototype.sendJsep = function(jsep) {
     return this.send({ janus: "message", body: {}, jsep: jsep });
 };
 
-/**
- * Sets up ICE negotiation on the connection for this handle, sending a signal for each new candidate. Returns a promise
- * that resolves when we've sent all of our ICE candidates.
- **/
-JanusPluginHandle.prototype.negotiateIce = function() {
-    return new Promise((resolve, reject) => {
-        this.conn.addEventListener("icecandidate", ev => {
-            this.send({ janus: "trickle",  candidate: ev.candidate || null }).then(() => {
-                if (!ev.candidate) { // this was the last candidate on our end and now they received it
-                    resolve();
-                }
-            });
-        });
-    });
+/** Sends an ICE trickle candidate associated with this handle. **/
+JanusPluginHandle.prototype.sendTrickle = function(candidate) {
+    return this.send({ janus: "trickle",  candidate: candidate });
 };
 
 /**
@@ -67,13 +55,15 @@ JanusPluginHandle.prototype.negotiateIce = function() {
  *
  * See https://janus.conf.meetecho.com/docs/rest.html#sessions.
  **/
-function JanusSession(output) {
+function JanusSession(output, options) {
     this.output = output;
     this.id = undefined;
     this.nextTxId = 0;
     this.txns = {};
-    this.timeoutMs = 10000;
-    this.keepaliveMs = 30000;
+    this.options = options || {
+        timeoutMs: 10000,
+        keepaliveMs: 30000
+    };
 }
 
 /** Creates this session on the Janus server and sets its ID. **/
@@ -127,8 +117,8 @@ JanusSession.prototype.send = function(signal) {
     }, signal);
     return new Promise((resolve, reject) => {
         var timeout = null;
-        if (this.timeoutMs) {
-            timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.timeoutMs);
+        if (this.options.timeoutMs) {
+            timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.options.timeoutMs);
         }
         this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout };
         this.output(JSON.stringify(signal));
@@ -140,7 +130,9 @@ JanusSession.prototype._resetKeepalive = function() {
     if (this.keepaliveTimeout) {
         clearTimeout(this.keepaliveTimeout);
     }
-    this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.keepaliveMs);
+    if (this.options.keepaliveMs) {
+        this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
+    }
 };
 
 JanusSession.prototype._keepalive = function() {
