@@ -17,9 +17,11 @@
   },
   "homepage": "https://github.com/mquander/minijanus.js#readme",
   "devDependencies": {
-    "browserify": "^14.5.0"
+    "browserify": "^14.5.0",
+    "tape": "^4.8.0"
   },
   "scripts": {
-    "build": "browserify minijanus.js --standalone Minijanus > bundle.js"
+    "build": "browserify minijanus.js --standalone Minijanus > bundle.js",
+    "test": "tape tests.js"
   }
 }

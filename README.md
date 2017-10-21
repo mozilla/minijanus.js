@@ -73,3 +73,9 @@ To generate bundle.js:
 ```
 $ npm run build
 ```
+
+## Testing
+
+```
+$ npm run test
+```

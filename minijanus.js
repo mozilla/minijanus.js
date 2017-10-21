@@ -94,7 +94,7 @@ JanusSession.prototype.receive = function(signal) {
             // this is an ack of an asynchronously-processed request, we should wait
             // to resolve the promise until the actual response comes in
         } else {
-            if (handlers.timeout) {
+            if (handlers.timeout != null) {
                 clearTimeout(handlers.timeout);
             }
             (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
