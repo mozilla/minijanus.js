@@ -1,5 +1,7 @@
 # minijanus.js
 
+[![Build Status](https://travis-ci.org/mquander/minijanus.js.svg?branch=master)](https://travis-ci.org/mquander/minijanus.js)
+
 A super-simplistic and -minimal wrapper for talking to the [Janus signalling API][api-docs]. Developed for use with
 Janus as a web game networking backend via [janus-plugin-sfu][].
 
@@ -23,16 +25,30 @@ Require `minijanus` in Node, or link to bundle.js in a browser. Then:
 ```javascript
 var ws = new WebSocket("ws://localhost:8188", "janus-protocol");
 ws.addEventListener("open", () => {
-   var session = new Minijanus.JanusSession(ws.send.bind(ws));
-   ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
-   session.create().then(() => establishConnection(session));
+    var session = new Minijanus.JanusSession(ws.send.bind(ws));
+    ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
+    session.create().then(() => establishConnection(session)).then(() => {
+        console.info("Connection established: ", handle);
+    });
 });
+
+function negotiateIce(conn, handle) {
+    return new Promise((resolve, reject) => {
+        conn.addEventListener("icecandidate", ev => {
+            handle.sendTrickle(ev.candidate || null).then(() => {
+                if (!ev.candidate) { // this was the last candidate on our end and now they received it
+                    resolve();
+                }
+            });
+        });
+    });
+};
 
 function establishConnection(session) {
     var conn = new RTCPeerConnection({});
-    var handle = new Minijanus.JanusPluginHandle(session, conn);
-    var publisher = handle.attach("janus.plugin.sfu").then(() => {
-        var iceReady = handle.negotiateIce();
+    var handle = new Minijanus.JanusPluginHandle(session);
+    return handle.attach("janus.plugin.sfu").then(() => {
+        var iceReady = negotiateIce(conn, handle);
         var unreliableCh = conn.createDataChannel("unreliable", { ordered: false, maxRetransmits: 0 });
         var reliableCh = conn.createDataChannel("reliable", { ordered: true });
         var mediaReady = navigator.mediaDevices.getUserMedia({ audio: true });
@@ -45,10 +61,7 @@ function establishConnection(session) {
         var remoteReady = offerReady
             .then(handle.sendJsep.bind(handle))
             .then(answer => conn.setRemoteDescription(answer.jsep));
-        return Promise.all([iceReady, localReady, remoteReady]).then(() => {
-            console.info("Cnnection established: ", handle);
-            return handle;
-        });
+        return Promise.all([iceReady, localReady, remoteReady]);
     });
 }
 ```
