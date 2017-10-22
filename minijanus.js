@@ -97,8 +97,8 @@ JanusSession.prototype.receive = function(signal) {
       if (handlers.timeout != null) {
         clearTimeout(handlers.timeout);
       }
-      (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
       delete this.txns[signal.transaction];
+      (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
     }
   }
 };
@@ -117,7 +117,10 @@ JanusSession.prototype.send = function(signal) {
   return new Promise((resolve, reject) => {
     var timeout = null;
     if (this.options.timeoutMs) {
-      timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.options.timeoutMs);
+      timeout = setTimeout(() => {
+        delete this.txns[signal.transaction];
+        reject(new Error("Signalling message timed out."));
+      }, this.options.timeoutMs);
     }
     this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout };
     this.output(JSON.stringify(signal));

@@ -18,6 +18,7 @@ test('transactions are detected and matched up', function(t) {
     t.deepEqual(results[0], { transaction: "figs", cats: "hats" });
     t.deepEqual(results[1], { transaction: "wigs" });
     t.deepEqual(results[2], { transaction: "pigs", rats: "pats" });
+    t.deepEqual(session.txns, {});
     t.end();
   });
 });
@@ -36,5 +37,8 @@ test('transaction timeouts happen', function(t) {
 
   setTimeout(() => session.receive({ transaction: "hasty", "phew": "just-in-time" }, 1));
 
-  Promise.all([aq, bq]).then(() => t.end());
+  Promise.all([aq, bq]).then(() => {
+    t.deepEqual(session.txns, {});
+    t.end();
+  });
 });
