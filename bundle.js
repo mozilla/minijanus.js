@@ -7,22 +7,22 @@
  * See https://janus.conf.meetecho.com/docs/rest.html#handles.
  **/
 function JanusPluginHandle(session) {
-    this.session = session;
-    this.id = undefined;
+  this.session = session;
+  this.id = undefined;
 }
 
 /** Attaches this handle to the Janus server and sets its ID. **/
 JanusPluginHandle.prototype.attach = function(plugin) {
-    var payload = { janus: "attach", plugin: plugin, "force-bundle": true, "force-rtcp-mux": true };
-    return this.session.send(payload).then(resp => {
-        this.id = resp.data.id;
-        return resp;
-    });
+  var payload = { janus: "attach", plugin: plugin, "force-bundle": true, "force-rtcp-mux": true };
+  return this.session.send(payload).then(resp => {
+    this.id = resp.data.id;
+    return resp;
+  });
 };
 
 /** Detaches this handle. **/
 JanusPluginHandle.prototype.detach = function() {
-    return this.send({ janus: "detach" });
+  return this.send({ janus: "detach" });
 };
 
 /**
@@ -31,22 +31,22 @@ JanusPluginHandle.prototype.detach = function() {
  * session timeout.
  **/
 JanusPluginHandle.prototype.send = function(signal) {
-    return this.session.send(Object.assign({ handle_id: this.id }, signal));
+  return this.session.send(Object.assign({ handle_id: this.id }, signal));
 };
 
 /** Sends a plugin-specific message associated with this handle. **/
 JanusPluginHandle.prototype.sendMessage = function(body) {
-    return this.send({ janus: "message", body: body });
+  return this.send({ janus: "message", body: body });
 };
 
 /** Sends a JSEP offer or answer associated with this handle. **/
 JanusPluginHandle.prototype.sendJsep = function(jsep) {
-    return this.send({ janus: "message", body: {}, jsep: jsep });
+  return this.send({ janus: "message", body: {}, jsep: jsep });
 };
 
 /** Sends an ICE trickle candidate associated with this handle. **/
 JanusPluginHandle.prototype.sendTrickle = function(candidate) {
-    return this.send({ janus: "trickle",  candidate: candidate });
+  return this.send({ janus: "trickle",  candidate: candidate });
 };
 
 /**
@@ -56,27 +56,27 @@ JanusPluginHandle.prototype.sendTrickle = function(candidate) {
  * See https://janus.conf.meetecho.com/docs/rest.html#sessions.
  **/
 function JanusSession(output, options) {
-    this.output = output;
-    this.id = undefined;
-    this.nextTxId = 0;
-    this.txns = {};
-    this.options = options || {
-        timeoutMs: 10000,
-        keepaliveMs: 30000
-    };
+  this.output = output;
+  this.id = undefined;
+  this.nextTxId = 0;
+  this.txns = {};
+  this.options = options || {
+    timeoutMs: 10000,
+    keepaliveMs: 30000
+  };
 }
 
 /** Creates this session on the Janus server and sets its ID. **/
 JanusSession.prototype.create = function() {
-    return this.send({ janus: "create" }).then(resp => {
-        this.id = resp.data.id;
-        return resp;
-    });
+  return this.send({ janus: "create" }).then(resp => {
+    this.id = resp.data.id;
+    return resp;
+  });
 };
 
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
-    return this.send({ janus: "destroy" });
+  return this.send({ janus: "destroy" });
 };
 
 /**
@@ -88,20 +88,20 @@ JanusSession.prototype.destroy = function() {
  * WebSocket's `message` event, or when a new datum shows up in an HTTP long-polling response.
  **/
 JanusSession.prototype.receive = function(signal) {
-    console.debug("Incoming Janus signal: ", signal);
-    if (signal.transaction != null) {
-        var handlers = this.txns[signal.transaction];
-        if (signal.janus === "ack" && signal.hint) {
-            // this is an ack of an asynchronously-processed request, we should wait
-            // to resolve the promise until the actual response comes in
-        } else {
-            if (handlers.timeout) {
-                clearTimeout(handlers.timeout);
-            }
-            (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
-            delete this.txns[signal.transaction];
-        }
+  console.debug("Incoming Janus signal: ", signal);
+  if (signal.transaction != null) {
+    var handlers = this.txns[signal.transaction];
+    if (signal.janus === "ack" && signal.hint) {
+      // this is an ack of an asynchronously-processed request, we should wait
+      // to resolve the promise until the actual response comes in
+    } else if (handlers != null) {
+      if (handlers.timeout != null) {
+        clearTimeout(handlers.timeout);
+      }
+      delete this.txns[signal.transaction];
+      (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
     }
+  }
 };
 
 /**
@@ -110,38 +110,41 @@ JanusSession.prototype.receive = function(signal) {
  * session timeout.
  **/
 JanusSession.prototype.send = function(signal) {
-    console.debug("Outgoing Janus signal: ", signal);
-    signal = Object.assign({
-        session_id: this.id,
-        transaction: (this.nextTxId++).toString()
-    }, signal);
-    return new Promise((resolve, reject) => {
-        var timeout = null;
-        if (this.options.timeoutMs) {
-            timeout = setTimeout(() => reject(new Error("Signalling message timed out.")), this.options.timeoutMs);
-        }
-        this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout };
-        this.output(JSON.stringify(signal));
-        this._resetKeepalive();
-    });
+  console.debug("Outgoing Janus signal: ", signal);
+  signal = Object.assign({
+    session_id: this.id,
+    transaction: (this.nextTxId++).toString()
+  }, signal);
+  return new Promise((resolve, reject) => {
+    var timeout = null;
+    if (this.options.timeoutMs) {
+      timeout = setTimeout(() => {
+        delete this.txns[signal.transaction];
+        reject(new Error("Signalling message timed out."));
+      }, this.options.timeoutMs);
+    }
+    this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout };
+    this.output(JSON.stringify(signal));
+    this._resetKeepalive();
+  });
 };
 
 JanusSession.prototype._resetKeepalive = function() {
-    if (this.keepaliveTimeout) {
-        clearTimeout(this.keepaliveTimeout);
-    }
-    if (this.options.keepaliveMs) {
-        this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
-    }
+  if (this.keepaliveTimeout) {
+    clearTimeout(this.keepaliveTimeout);
+  }
+  if (this.options.keepaliveMs) {
+    this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
+  }
 };
 
 JanusSession.prototype._keepalive = function() {
-    return this.send({ janus: "keepalive" });
+  return this.send({ janus: "keepalive" });
 };
 
 module.exports = {
-    JanusPluginHandle,
-    JanusSession
+  JanusPluginHandle,
+  JanusSession
 };
 
 },{}]},{},[1])(1)
