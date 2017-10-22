@@ -23,7 +23,7 @@ test('transactions are detected and matched up', function(t) {
 });
 
 test('transaction timeouts happen', function(t) {
-  var session = new mj.JanusSession(signal => {}, { timeoutMs: 2 });
+  var session = new mj.JanusSession(signal => {}, { timeoutMs: 5 });
 
   var aq = session.send({ transaction: "lazy" }).then(
     resp => t.error(true, "Request should have failed!"),
