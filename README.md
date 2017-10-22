@@ -24,45 +24,45 @@ Require `minijanus` in Node, or link to bundle.js in a browser. Then:
 
 ```javascript
 var ws = new WebSocket("ws://localhost:8188", "janus-protocol");
-ws.addEventListener("open", () => {
-    var session = new Minijanus.JanusSession(ws.send.bind(ws));
-    ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
-    session.create().then(() => establishConnection(session)).then(() => {
-        console.info("Connection established: ", handle);
-    });
+  ws.addEventListener("open", () => {
+  var session = new Minijanus.JanusSession(ws.send.bind(ws));
+  ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
+  session.create().then(() => establishConnection(session)).then(() => {
+    console.info("Connection established: ", handle);
+  });
 });
 
 function negotiateIce(conn, handle) {
-    return new Promise((resolve, reject) => {
-        conn.addEventListener("icecandidate", ev => {
-            handle.sendTrickle(ev.candidate || null).then(() => {
-                if (!ev.candidate) { // this was the last candidate on our end and now they received it
-                    resolve();
-                }
-            });
-        });
+  return new Promise((resolve, reject) => {
+    conn.addEventListener("icecandidate", ev => {
+      handle.sendTrickle(ev.candidate || null).then(() => {
+        if (!ev.candidate) { // this was the last candidate on our end and now they received it
+          resolve();
+        }
+      });
     });
+  });
 };
 
 function establishConnection(session) {
-    var conn = new RTCPeerConnection({});
-    var handle = new Minijanus.JanusPluginHandle(session);
-    return handle.attach("janus.plugin.sfu").then(() => {
-        var iceReady = negotiateIce(conn, handle);
-        var unreliableCh = conn.createDataChannel("unreliable", { ordered: false, maxRetransmits: 0 });
-        var reliableCh = conn.createDataChannel("reliable", { ordered: true });
-        var mediaReady = navigator.mediaDevices.getUserMedia({ audio: true });
-        var offerReady = mediaReady
-            .then(media => {
-                conn.addStream(media);
-                return conn.createOffer({ audio: true });
-            }, () => conn.createOffer());
-        var localReady = offerReady.then(conn.setLocalDescription.bind(conn));
-        var remoteReady = offerReady
-            .then(handle.sendJsep.bind(handle))
-            .then(answer => conn.setRemoteDescription(answer.jsep));
-        return Promise.all([iceReady, localReady, remoteReady]);
-    });
+  var conn = new RTCPeerConnection({});
+  var handle = new Minijanus.JanusPluginHandle(session);
+  return handle.attach("janus.plugin.sfu").then(() => {
+    var iceReady = negotiateIce(conn, handle);
+    var unreliableCh = conn.createDataChannel("unreliable", { ordered: false, maxRetransmits: 0 });
+    var reliableCh = conn.createDataChannel("reliable", { ordered: true });
+    var mediaReady = navigator.mediaDevices.getUserMedia({ audio: true });
+    var offerReady = mediaReady
+      .then(media => {
+        conn.addStream(media);
+        return conn.createOffer({ audio: true });
+      }, () => conn.createOffer());
+    var localReady = offerReady.then(conn.setLocalDescription.bind(conn));
+    var remoteReady = offerReady
+      .then(handle.sendJsep.bind(handle))
+      .then(answer => conn.setRemoteDescription(answer.jsep));
+    return Promise.all([iceReady, localReady, remoteReady]);
+  });
 }
 ```
 
