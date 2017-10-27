@@ -115,10 +115,10 @@ JanusSession.prototype.receive = function(signal) {
  * session timeout.
  **/
 JanusSession.prototype.send = function(signal) {
-  signal = Object.assign({
-    session_id: this.id,
-    transaction: (this.nextTxId++).toString()
-  }, signal);
+  if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
+    signal = Object.assign({ session_id: this.id }, signal);
+  }
+  signal = Object.assign({ transaction: (this.nextTxId++).toString() }, signal);
   if (module.exports.verbose) {
     console.debug("Outgoing Janus signal: ", signal);
   }
