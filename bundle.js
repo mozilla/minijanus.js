@@ -115,13 +115,13 @@ JanusSession.prototype.receive = function(signal) {
  * session timeout.
  **/
 JanusSession.prototype.send = function(signal) {
-  if (module.exports.verbose) {
-    console.debug("Outgoing Janus signal: ", signal);
-  }
   signal = Object.assign({
     session_id: this.id,
     transaction: (this.nextTxId++).toString()
   }, signal);
+  if (module.exports.verbose) {
+    console.debug("Outgoing Janus signal: ", signal);
+  }
   return new Promise((resolve, reject) => {
     var timeout = null;
     if (this.options.timeoutMs) {
