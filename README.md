@@ -1,5 +1,6 @@
 # minijanus.js
 
+[![npm](https://img.shields.io/npm/v/minijanus.svg)](https://www.npmjs.com/package/minijanus)
 [![Build Status](https://travis-ci.org/mquander/minijanus.js.svg?branch=master)](https://travis-ci.org/mquander/minijanus.js)
 
 A super-simplistic and -minimal wrapper for talking to the [Janus signalling API][api-docs]. Developed for use with
