@@ -91,7 +91,7 @@ JanusSession.prototype.destroy = function() {
  * WebSocket's `message` event, or when a new datum shows up in an HTTP long-polling response.
  **/
 JanusSession.prototype.receive = function(signal) {
-  if (verbose) {
+  if (module.exports.verbose) {
     console.debug("Incoming Janus signal: ", signal);
   }
   if (signal.transaction != null) {
@@ -115,7 +115,7 @@ JanusSession.prototype.receive = function(signal) {
  * session timeout.
  **/
 JanusSession.prototype.send = function(signal) {
-  if (verbose) {
+  if (module.exports.verbose) {
     console.debug("Outgoing Janus signal: ", signal);
   }
   signal = Object.assign({
