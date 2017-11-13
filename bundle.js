@@ -83,6 +83,14 @@ JanusSession.prototype.destroy = function() {
 };
 
 /**
+ * Whether this signal represents an error, and the associated promise (if any) should be rejected.
+ * Users should override this to handle any custom plugin-specific error conventions.
+ **/
+JanusSession.prototype.isError = function(signal) {
+  return signal.janus === "error";
+};
+
+/**
  * Callback for receiving JSON signalling messages pertinent to this session. If the signals are responses to previously
  * sent signals, the promises for the outgoing signals will be resolved or rejected appropriately with this signal as an
  * argument.
@@ -104,7 +112,7 @@ JanusSession.prototype.receive = function(signal) {
         clearTimeout(handlers.timeout);
       }
       delete this.txns[signal.transaction];
-      (signal.janus === "error" ? handlers.reject : handlers.resolve)(signal);
+      (this.isError(signal) ? handlers.reject : handlers.resolve)(signal);
     }
   }
 };
