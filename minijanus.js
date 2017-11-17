@@ -78,7 +78,9 @@ JanusSession.prototype.create = function() {
 
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
-  return this.send({ janus: "destroy" });
+  return this.send({ janus: "destroy" }).then(() => {
+    this._killKeepalive();
+  });
 };
 
 /**
@@ -143,17 +145,21 @@ JanusSession.prototype.send = function(signal) {
   });
 };
 
-JanusSession.prototype._resetKeepalive = function() {
+JanusSession.prototype._keepalive = function() {
+  return this.send({ janus: "keepalive" });
+};
+
+JanusSession.prototype._killKeepalive = function() {
   if (this.keepaliveTimeout) {
     clearTimeout(this.keepaliveTimeout);
   }
+};
+
+JanusSession.prototype._resetKeepalive = function() {
+  this._killKeepalive();
   if (this.options.keepaliveMs) {
     this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
   }
-};
-
-JanusSession.prototype._keepalive = function() {
-  return this.send({ janus: "keepalive" });
 };
 
 module.exports = {
