@@ -1,7 +1,7 @@
 # minijanus.js
 
 [![npm](https://img.shields.io/npm/v/minijanus.svg)](https://www.npmjs.com/package/minijanus)
-[![Build Status](https://travis-ci.org/mquander/minijanus.js.svg?branch=master)](https://travis-ci.org/mozilla/minijanus.js)
+[![Build Status](https://travis-ci.org/mozilla/minijanus.js.svg?branch=master)](https://travis-ci.org/mozilla/minijanus.js)
 
 A super-simplistic and -minimal wrapper for talking to the [Janus signalling API][api-docs]. Developed for use with
 Janus as a web game networking backend via [janus-plugin-sfu][].
@@ -25,7 +25,7 @@ Require `minijanus` in Node, or link to bundle.js in a browser. Then:
 
 ```javascript
 var ws = new WebSocket("ws://localhost:8188", "janus-protocol");
-  ws.addEventListener("open", () => {
+ws.addEventListener("open", () => {
   var session = new Minijanus.JanusSession(ws.send.bind(ws));
   ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
   session.create().then(() => establishConnection(session)).then(() => {
