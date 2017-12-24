@@ -63,10 +63,10 @@ function JanusSession(output, options) {
   this.id = undefined;
   this.nextTxId = 0;
   this.txns = {};
-  this.options = options || {
+  this.options = Object.assign({
     timeoutMs: 10000,
     keepaliveMs: 30000
-  };
+  }, options);
 }
 
 /** Creates this session on the Janus server and sets its ID. **/
