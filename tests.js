@@ -2,7 +2,7 @@ var mj = require('./minijanus.js');
 var test = require('tape');
 
 test('transactions are detected and matched up', function(t) {
-  var session = new mj.JanusSession(signal => {}, {});
+  var session = new mj.JanusSession(signal => {}, { keepaliveMs: null });
 
   var aq = session.send({ transaction: "figs" });
   var bq = session.send({ transaction: "wigs" });
@@ -24,7 +24,7 @@ test('transactions are detected and matched up', function(t) {
 });
 
 test('transaction timeouts happen', function(t) {
-  var session = new mj.JanusSession(signal => {}, { timeoutMs: 5 });
+  var session = new mj.JanusSession(signal => {}, { timeoutMs: 5, keepaliveMs: null });
 
   var aq = session.send({ transaction: "lazy" }).then(
     resp => t.error(true, "Request should have failed!"),
