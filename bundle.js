@@ -106,7 +106,7 @@ JanusSession.prototype.receive = function(signal) {
   }
   if (signal.transaction != null) {
     var handlers = this.txns[signal.transaction];
-    if (signal.janus === "ack" && signal.hint) {
+    if (signal.janus === "ack") {
       // this is an ack of an asynchronously-processed request, we should wait
       // to resolve the promise until the actual response comes in
     } else if (handlers != null) {
