@@ -72,11 +72,11 @@ function establishConnection(session) {
 To generate bundle.js:
 
 ```
-$ npm run build
+$ yarn build
 ```
 
 ## Testing
 
 ```
-$ npm run test
+$ yarn test
 ```
