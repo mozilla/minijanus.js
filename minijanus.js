@@ -103,6 +103,9 @@ JanusSession.prototype.receive = function(signal) {
   if (module.exports.verbose) {
     console.debug("Incoming Janus signal: ", signal);
   }
+  if (signal.session_id != this.id) {
+    console.warn("Incorrect session ID received in Janus signalling message: was " + signal.session_id + ", expected " + this.id + ".");
+  }
   if (signal.transaction != null) {
     var txn = this.txns[signal.transaction];
     if (signal.janus === "ack" && txn.type == "message") {
