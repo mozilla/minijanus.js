@@ -9,6 +9,7 @@ test('transactions are detected and matched up', function(t) {
   var bq = session.send("message", { transaction: "wigs" });
   var cq = session.send("message", { transaction: "pigs" });
 
+  session.receive({ transaction: "???" });
   session.receive({ transaction: "bigs", janus: "ack" });
   session.receive({ transaction: "figs", janus: "ack" });
   session.receive({ transaction: "wigs", janus: "ack" });

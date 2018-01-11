@@ -109,16 +109,25 @@ JanusSession.prototype.receive = function(signal) {
   }
   if (signal.transaction != null) {
     var txn = this.txns[signal.transaction];
-    if (signal.janus === "ack" && txn.type == "message") {
-      // this is an ack of an asynchronously-processed plugin request, we should wait
-      // to resolve the promise until the actual response comes in
-    } else if (txn != null) {
-      if (txn.timeout != null) {
-        clearTimeout(txn.timeout);
-      }
-      delete this.txns[signal.transaction];
-      (this.isError(signal) ? txn.reject : txn.resolve)(signal);
+
+    if (txn == null) {
+      // this is a response to a transaction that wasn't caused via JanusSession.send, or a plugin replied twice to a
+      // single request, or something else that isn't under our purview; that's fine
+      return;
     }
+
+    if (signal.janus === "ack" && txn.type == "message") {
+      // this is an ack of an asynchronously-processed plugin request, we should wait to resolve the promise until the
+      // actual response comes in
+      return;
+    }
+
+    if (txn.timeout != null) {
+      clearTimeout(txn.timeout);
+    }
+
+    delete this.txns[signal.transaction];
+    (this.isError(signal) ? txn.reject : txn.resolve)(signal);
   }
 };
 
