@@ -1,6 +1,3 @@
-/** Whether to log information about incoming and outgoing Janus signals. **/
-var verbose = false;
-
 /**
  * Represents a handle to a single Janus plugin on a Janus session. Each WebRTC connection to the Janus server will be
  * associated with a single handle. Once attached to the server, this handle will be given a unique ID which should be
@@ -63,6 +60,7 @@ function JanusSession(output, options) {
   this.nextTxId = 0;
   this.txns = {};
   this.options = Object.assign({
+    verbose: false,
     timeoutMs: 10000,
     keepaliveMs: 30000
   }, options);
@@ -100,7 +98,7 @@ JanusSession.prototype.isError = function(signal) {
  * WebSocket's `message` event, or when a new datum shows up in an HTTP long-polling response.
  **/
 JanusSession.prototype.receive = function(signal) {
-  if (module.exports.verbose) {
+  if (this.options.verbose) {
     console.debug("Incoming Janus signal: ", signal);
   }
   if (signal.session_id != this.id) {
@@ -141,7 +139,7 @@ JanusSession.prototype.send = function(type, signal) {
   if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
     signal = Object.assign({ session_id: this.id }, signal);
   }
-  if (module.exports.verbose) {
+  if (this.options.verbose) {
     console.debug("Outgoing Janus signal: ", signal);
   }
   return new Promise((resolve, reject) => {
@@ -177,6 +175,5 @@ JanusSession.prototype._resetKeepalive = function() {
 
 module.exports = {
   JanusPluginHandle,
-  JanusSession,
-  verbose
+  JanusSession
 };
