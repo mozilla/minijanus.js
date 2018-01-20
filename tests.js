@@ -28,6 +28,9 @@ test('transactions are detected and matched up', function(t) {
     t.deepEqual(results[3], { transaction: "pigs", rats: "pats" });
     t.deepEqual(session.txns, {});
     t.end();
+  }).catch(err => {
+    t.fail(err);
+    t.end();
   });
 });
 
@@ -52,5 +55,8 @@ test('transaction timeouts happen', function(t) {
     t.deepEqual(results[1], { transaction: "hasty", phew: "just-in-time" });
     t.deepEqual(session.txns, {});
     t.end();
-  });
+  }).catch(err => {
+    t.fail(err);
+    t.end();
+  });;
 });
