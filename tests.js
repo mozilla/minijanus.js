@@ -1,6 +1,30 @@
 var mj = require('./minijanus.js');
 var test = require('tape');
 
+test('events are detected and matched to handles', function(t) {
+  var session = new mj.JanusSession(signal => {}, { keepaliveMs: null });
+  var handles = [0, 1, 2].map(i => { var h = new mj.JanusPluginHandle(session); h.id = i; return h; });
+  var h0 = new Promise(resolve => handles[0].on("foo", resolve));
+  var h1 = new Promise(resolve => handles[1].on("foo", resolve));
+  var h2 = new Promise(resolve => handles[2].on("bar", resolve));
+
+  session.receive({ janus: "foo", sender: 123 });
+  session.receive({ janus: "foo", sender: 0 });
+  session.receive({ janus: "bar", sender: 2 });
+  session.receive({ janus: "foo", sender: 456 });
+  session.receive({ janus: "foo", sender: 1 });
+
+  Promise.all([h0, h1, h2]).then(results => {
+    t.deepEqual(results[0], { janus: "foo", sender: 0 });
+    t.deepEqual(results[1], { janus: "foo", sender: 1 });
+    t.deepEqual(results[2], { janus: "bar", sender: 2 });
+    t.end();
+  }).catch(err => {
+    t.fail(err);
+    t.end();
+  });
+});
+
 test('transactions are detected and matched up', function(t) {
   var session = new mj.JanusSession(signal => {}, { keepaliveMs: null });
 
