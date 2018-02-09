@@ -29,45 +29,40 @@ If you want a similar but moderately more featureful wrapper, check out [minnie-
 Require `minijanus` in Node, or link to bundle.js in a browser. Then:
 
 ```javascript
-function negotiateIce(conn, handle) {
-  return new Promise((resolve, reject) => {
-    conn.addEventListener("icecandidate", ev => {
-      handle.sendTrickle(ev.candidate || null).then(() => {
-        if (!ev.candidate) { // this was the last candidate on our end and now they received it
-          resolve();
-        }
-      }, reject);
-    });
-  });
-};
-
-function negotiateOffer(conn, handle) {
-  var mediaReady = navigator.mediaDevices.getUserMedia({ audio: true });
-  var connectionReady = mediaReady.then(m => m.getTracks().forEach(t => conn.addTrack(t, m)));
-  var offerReady = connectionReady.then(conn.createOffer.bind(conn));
-  var localReady = offerReady.then(conn.setLocalDescription.bind(conn));
-  var answerReady = offerReady.then(handle.sendJsep.bind(handle));
-  var remoteReady = answerReady.then(answer => conn.setRemoteDescription(answer.jsep));
-  return Promise.all([localReady, remoteReady]);
-}
-
 var ws = new WebSocket("ws://localhost:8188", "janus-protocol");
-ws.addEventListener("open", () => {
-  var session = new Minijanus.JanusSession(ws.send.bind(ws), { verbose: true });
-  ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
-  session.create().then(() => {
-    var conn = new RTCPeerConnection({});
-    var handle = new Minijanus.JanusPluginHandle(session);
-    return handle.attach("janus.plugin.sfu").then(() => {
+var session = new JanusPluginSession(ws.send.bind(ws));
+var handle = new JanusPluginHandle(session);
+var conn = new RTCPeerConnection({});
+
+ws.addEventListener("message", ev => session.receive(JSON.parse(ev.data)));
+ws.addEventListener("open", _ => {
+  session.create()
+    .then(_ => handle.attach("janus.plugin.sfu"))
+    .then(_ => {
+      conn.addEventListener("icecandidate", ev => {
+        handle.sendTrickle(ev.candidate || null).catch(e => console.error("Error trickling ICE: ", e));
+      });
+      conn.addEventListener("negotiationneeded", _ => {
+        var offer = conn.createOffer();
+        var local = offer.then(o => conn.setLocalDescription(o));
+        var remote = offer.then(j => handle.sendJsep(j)).then(r => conn.setRemoteDescription(r.jsep));
+        Promise.all([local, remote]).catch(e => console.error("Error negotiating offer: ", e));
+      });
       var unreliableCh = conn.createDataChannel("unreliable", { ordered: false, maxRetransmits: 0 });
       var reliableCh = conn.createDataChannel("reliable", { ordered: true });
-      negotiateIce(conn, handle).catch(err => console.error("Error negotiating ICE candidates: ", err));
-      negotiateOffer(conn, handle).catch(err => console.error("Error negotiating offer: ", err));
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(m => m.getTracks().forEach(t => conn.addTrack(t, m)))
+        .catch(e => console.error("Error acquiring media: ", e));
       return new Promise(resolve => handle.on("webrtcup", resolve));
-    });
-  }).catch(err => console.error("Error connecting to Janus: ", err));
+    })
+    .then(_ => { console.info("Connected to Janus: ", conn); })
+    .catch(e => { console.error("Error connecting to Janus: ", e); });
 });
 ```
+
+(Note that this example code first negotiates only the data channels, and then renegotiates afterward when the
+microphone permission is provided. Only recent versions of Janus support renegotiation. If you didn't want this, you
+would instead wait to create the connection until the microphone permission was granted.)
 
 ## Building
 
