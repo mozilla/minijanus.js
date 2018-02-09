@@ -187,7 +187,7 @@ JanusSession.prototype.send = function(type, signal) {
   });
 };
 
-JanusSession.prototype._keepalive = function() {
+JanusSession.prototype._sendKeepalive = function() {
   return this.send("keepalive");
 };
 
@@ -200,7 +200,7 @@ JanusSession.prototype._killKeepalive = function() {
 JanusSession.prototype._resetKeepalive = function() {
   this._killKeepalive();
   if (this.options.keepaliveMs) {
-    this.keepaliveTimeout = setTimeout(() => this._keepalive(), this.options.keepaliveMs);
+    this.keepaliveTimeout = setTimeout(() => this._sendKeepalive(), this.options.keepaliveMs);
   }
 };
 
