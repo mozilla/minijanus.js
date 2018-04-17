@@ -88,17 +88,16 @@ JanusSession.prototype.create = function() {
 
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
-  // This message will not receive a response from the server.
-  // It will also be rejected at the bottom of this method so we add an empty catch handler.
-  this.send("destroy").catch((e) => {});
+  this.transmit("destroy");
 
   this._killKeepalive();
 
-  for (var txnId in this.txns) {
-    if (this.txns.hasOwnProperty(txnId)) {
-      var txn = this.txns[txnId];
+  for (var txId in this.txns) {
+    if (this.txns.hasOwnProperty(txId)) {
+      var txn = this.txns[txId];
       clearTimeout(txn.timeout);
       txn.reject("Janus session destroyed");
+      delete this.txns[txId];
     }
   }
 };
@@ -176,13 +175,8 @@ JanusSession.prototype.receive = function(signal) {
  **/
 JanusSession.prototype.send = function(type, signal) {
   var txid = (this.nextTxId++).toString();
-  signal = Object.assign({ janus: type, transaction: txid }, signal);
-  if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
-    signal = Object.assign({ session_id: this.id }, signal);
-  }
-  if (this.options.verbose) {
-    console.debug("Outgoing Janus signal: ", signal);
-  }
+  signal = Object.assign({ transaction: txid }, signal);
+
   return new Promise((resolve, reject) => {
     var timeout = null;
     if (this.options.timeoutMs) {
@@ -192,9 +186,26 @@ JanusSession.prototype.send = function(type, signal) {
       }, this.options.timeoutMs);
     }
     this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout, type: type };
-    this.output(JSON.stringify(signal));
-    this._resetKeepalive();
+    this.transmit(type, signal);
   });
+};
+
+/**
+ * Sends a signal associated with this session without waiting for a response. Signals should be JSON-serializable objects.
+ */
+JanusSession.prototype.transmit = function(type, signal) {
+  signal = Object.assign({ janus: type }, signal);
+
+  if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
+    signal = Object.assign({ session_id: this.id }, signal);
+  }
+
+  if (this.options.verbose) {
+    console.debug("Outgoing Janus signal: ", signal);
+  }
+
+  this.output(JSON.stringify(signal));
+  this._resetKeepalive();
 };
 
 JanusSession.prototype._sendKeepalive = function() {
