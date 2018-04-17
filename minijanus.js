@@ -88,7 +88,8 @@ JanusSession.prototype.create = function() {
 
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
-  // Note that this message, unlike others, does *not* receive a response from janus, so there is no promise returned.
+  // This message will not receive a response from the server.
+  // It will also be rejected at the bottom of this method so we add an empty catch handler.
   this.send("destroy").catch((e) => {});
 
   this._killKeepalive();
