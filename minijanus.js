@@ -89,9 +89,7 @@ JanusSession.prototype.create = function() {
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
   // Note that this message, unlike others, does *not* receive a response from janus, so there is no promise returned.
-  try {
-    this.send("destroy").catch((e) => {});
-  } catch (e) {}
+  this.send("destroy").catch((e) => {});
 
   this._killKeepalive();
 
@@ -99,7 +97,7 @@ JanusSession.prototype.destroy = function() {
     if (this.txns.hasOwnProperty(txnId)) {
       var txn = this.txns[txnId];
       clearTimeout(txn.timeout);
-      txn.reject(`Transaction ${txnId} failed because the JanusSession was destroyed.`);
+      txn.reject("Janus session destroyed");
     }
   }
 };
