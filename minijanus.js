@@ -88,18 +88,25 @@ JanusSession.prototype.create = function() {
 
 /** Destroys this session. **/
 JanusSession.prototype.destroy = function() {
-  this.transmit("destroy");
+  return this.send("destroy").then((resp) => {
+    this.dispose();
+    return resp;
+  });
+};
 
+JanusSession.prototype.dispose = function() {
   this._killKeepalive();
 
   for (var txId in this.txns) {
     if (this.txns.hasOwnProperty(txId)) {
       var txn = this.txns[txId];
       clearTimeout(txn.timeout);
-      txn.reject("Janus session destroyed");
+      txn.reject("Janus session disposed");
       delete this.txns[txId];
     }
   }
+
+  this.eventHandlers = {};
 };
 
 /**
@@ -159,9 +166,7 @@ JanusSession.prototype.receive = function(signal) {
       return;
     }
 
-    if (txn.timeout != null) {
-      clearTimeout(txn.timeout);
-    }
+    clearTimeout(txn.timeout);
 
     delete this.txns[signal.transaction];
     (this.isError(signal) ? txn.reject : txn.resolve)(signal);
@@ -213,9 +218,7 @@ JanusSession.prototype._sendKeepalive = function() {
 };
 
 JanusSession.prototype._killKeepalive = function() {
-  if (this.keepaliveTimeout) {
-    clearTimeout(this.keepaliveTimeout);
-  }
+  clearTimeout(this.keepaliveTimeout);
 };
 
 JanusSession.prototype._resetKeepalive = function() {
