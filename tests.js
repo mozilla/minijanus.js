@@ -86,7 +86,7 @@ test('transaction timeouts happen', function(t) {
 });
 
 
-test('session is properly disposed of on destroy', function(t) {
+test('session transactions are properly disposed of', function(t) {
   var session = new mj.JanusSession(signal => {}, { timeoutMs: 5, keepaliveMs: null });
 
   var message1 = session.send("message", { transaction: "message1" }).then(
@@ -100,7 +100,7 @@ test('session is properly disposed of on destroy', function(t) {
 
   session.receive({ transaction: "message1", value: "test" });
 
-  session.destroy();
+  session.dispose();
 
   Promise.all([message1, message2]).then(results => {
     t.deepEqual(results[0], { transaction: "message1", value: "test" });
