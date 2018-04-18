@@ -109,7 +109,7 @@ JanusSession.prototype.dispose = function() {
     if (this.txns.hasOwnProperty(txId)) {
       var txn = this.txns[txId];
       clearTimeout(txn.timeout);
-      txn.reject(new Error("Janus session disposed"));
+      txn.reject(new Error("Janus session was disposed."));
       delete this.txns[txId];
     }
   }
@@ -225,7 +225,9 @@ JanusSession.prototype._killKeepalive = function() {
 JanusSession.prototype._resetKeepalive = function() {
   this._killKeepalive();
   if (this.options.keepaliveMs) {
-    this.keepaliveTimeout = setTimeout(() => this._sendKeepalive(), this.options.keepaliveMs);
+    this.keepaliveTimeout = setTimeout(() => {
+      this._sendKeepalive().catch(e => console.error("Error received from keepalive: ", e));
+    }, this.options.keepaliveMs);
   }
 };
 
