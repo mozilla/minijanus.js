@@ -86,11 +86,32 @@ JanusSession.prototype.create = function() {
   });
 };
 
-/** Destroys this session. **/
+/**
+ * Destroys this session. Note that upon destruction, Janus will also close the signalling transport (if applicable) and
+ * any open WebRTC connections.
+ **/
 JanusSession.prototype.destroy = function() {
-  // Note that this message, unlike others, does *not* receive a response from janus, so there is no promise returned.
-  this.send("destroy");
+  return this.send("destroy").then((resp) => {
+    this.dispose();
+    return resp;
+  });
+};
+
+/**
+ * Disposes of this session in a way such that no further incoming signalling messages will be processed.
+ * Outstanding transactions will be rejected.
+ **/
+JanusSession.prototype.dispose = function() {
   this._killKeepalive();
+  this.eventHandlers = {};
+  for (var txId in this.txns) {
+    if (this.txns.hasOwnProperty(txId)) {
+      var txn = this.txns[txId];
+      clearTimeout(txn.timeout);
+      txn.reject(new Error("Janus session was disposed."));
+      delete this.txns[txId];
+    }
+  }
 };
 
 /**
@@ -140,7 +161,7 @@ JanusSession.prototype.receive = function(signal) {
     var txn = this.txns[signal.transaction];
     if (txn == null) {
       // this is a response to a transaction that wasn't caused via JanusSession.send, or a plugin replied twice to a
-      // single request, or something else that isn't under our purview; that's fine
+      // single request, or the session was disposed, or something else that isn't under our purview; that's fine
       return;
     }
 
@@ -150,9 +171,7 @@ JanusSession.prototype.receive = function(signal) {
       return;
     }
 
-    if (txn.timeout != null) {
-      clearTimeout(txn.timeout);
-    }
+    clearTimeout(txn.timeout);
 
     delete this.txns[signal.transaction];
     (this.isError(signal) ? txn.reject : txn.resolve)(signal);
@@ -160,31 +179,38 @@ JanusSession.prototype.receive = function(signal) {
 };
 
 /**
- * Sends a signal associated with this session. Signals should be JSON-serializable objects. Returns a promise that will
- * be resolved or rejected when a response to this signal is received, or when no response is received within the
- * session timeout.
+ * Sends a signal associated with this session, beginning a new transaction. Returns a promise that will be resolved or
+ * rejected when a response is received in the same transaction, or when no response is received within the session
+ * timeout.
  **/
 JanusSession.prototype.send = function(type, signal) {
-  var txid = (this.nextTxId++).toString();
-  signal = Object.assign({ janus: type, transaction: txid }, signal);
-  if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
-    signal = Object.assign({ session_id: this.id }, signal);
-  }
-  if (this.options.verbose) {
-    console.debug("Outgoing Janus signal: ", signal);
-  }
+  signal = Object.assign({ transaction: (this.nextTxId++).toString() }, signal);
   return new Promise((resolve, reject) => {
     var timeout = null;
     if (this.options.timeoutMs) {
       timeout = setTimeout(() => {
         delete this.txns[signal.transaction];
-        reject(new Error("Signalling message with txid " + txid + " timed out."));
+        reject(new Error("Signalling message with txid " + signal.transaction + " timed out."));
       }, this.options.timeoutMs);
     }
     this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout, type: type };
-    this.output(JSON.stringify(signal));
-    this._resetKeepalive();
+    this._transmit(type, signal);
   });
+};
+
+JanusSession.prototype._transmit = function(type, signal) {
+  signal = Object.assign({ janus: type }, signal);
+
+  if (this.id != null) { // this.id is undefined in the special case when we're sending the session create message
+    signal = Object.assign({ session_id: this.id }, signal);
+  }
+
+  if (this.options.verbose) {
+    console.debug("Outgoing Janus signal: ", signal);
+  }
+
+  this.output(JSON.stringify(signal));
+  this._resetKeepalive();
 };
 
 JanusSession.prototype._sendKeepalive = function() {
@@ -192,15 +218,15 @@ JanusSession.prototype._sendKeepalive = function() {
 };
 
 JanusSession.prototype._killKeepalive = function() {
-  if (this.keepaliveTimeout) {
-    clearTimeout(this.keepaliveTimeout);
-  }
+  clearTimeout(this.keepaliveTimeout);
 };
 
 JanusSession.prototype._resetKeepalive = function() {
   this._killKeepalive();
   if (this.options.keepaliveMs) {
-    this.keepaliveTimeout = setTimeout(() => this._sendKeepalive(), this.options.keepaliveMs);
+    this.keepaliveTimeout = setTimeout(() => {
+      this._sendKeepalive().catch(e => console.error("Error received from keepalive: ", e));
+    }, this.options.keepaliveMs);
   }
 };
 

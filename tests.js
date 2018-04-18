@@ -84,3 +84,30 @@ test('transaction timeouts happen', function(t) {
     t.end();
   });;
 });
+
+
+test('session transactions are properly disposed of', function(t) {
+  var session = new mj.JanusSession(signal => {}, { timeoutMs: 5, keepaliveMs: null });
+
+  var message1 = session.send("message", { transaction: "message1" }).then(
+    resp => { t.pass("Message 1 was received."); return resp; },
+    err => { t.fail("Message should have been received."); return err; }
+  );
+  var message2 = session.send("message", { transaction: "message2" }).then(
+    resp => {  t.fail("Message 2 shouldn't have been received."); return resp; },
+    err => { t.pass("Message 2 was correctly rejected."); return err; }
+  );
+
+  session.receive({ transaction: "message1", value: "test" });
+
+  session.dispose();
+
+  Promise.all([message1, message2]).then(results => {
+    t.deepEqual(results[0], { transaction: "message1", value: "test" });
+    t.deepEqual(session.txns, {});
+    t.end();
+  }).catch(err => {
+    t.fail(err);
+    t.end();
+  });
+});
