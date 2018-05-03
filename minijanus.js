@@ -143,7 +143,7 @@ JanusSession.prototype.on = function(ev, callback) {
  **/
 JanusSession.prototype.receive = function(signal) {
   if (this.options.verbose) {
-    console.debug("Incoming Janus signal: ", signal);
+    this._logIncoming(signal);
   }
   if (signal.session_id != this.id) {
     console.warn("Incorrect session ID received in Janus signalling message: was " + signal.session_id + ", expected " + this.id + ".");
@@ -190,7 +190,7 @@ JanusSession.prototype.send = function(type, signal) {
     if (this.options.timeoutMs) {
       timeout = setTimeout(() => {
         delete this.txns[signal.transaction];
-        reject(new Error("Signalling message with txid " + signal.transaction + " timed out."));
+        reject(new Error("Signalling transaction with txid " + signal.transaction + " timed out."));
       }, this.options.timeoutMs);
     }
     this.txns[signal.transaction] = { resolve: resolve, reject: reject, timeout: timeout, type: type };
@@ -206,11 +206,28 @@ JanusSession.prototype._transmit = function(type, signal) {
   }
 
   if (this.options.verbose) {
-    console.debug("Outgoing Janus signal: ", signal);
+    this._logOutgoing(signal);
   }
 
   this.output(JSON.stringify(signal));
   this._resetKeepalive();
+};
+
+JanusSession.prototype._logOutgoing = function(signal) {
+  var kind = signal.janus;
+  if (kind === "message" && signal.jsep) {
+    kind = signal.jsep.type;
+  }
+  var message = "> Outgoing Janus " + (kind || "signal") + " (#" + signal.transaction + "): ";
+  console.debug("%c" + message, "color: #040", signal);
+};
+
+JanusSession.prototype._logIncoming = function(signal) {
+  var kind = signal.janus;
+  var message = signal.transaction ?
+      "< Incoming Janus " + (kind || "signal") + " (#" + signal.transaction + "): " :
+      "< Incoming Janus " + (kind || "signal") + ": ";
+  console.debug("%c" + message, "color: #004", signal);
 };
 
 JanusSession.prototype._sendKeepalive = function() {
