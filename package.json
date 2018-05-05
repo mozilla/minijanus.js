@@ -1,14 +1,16 @@
 {
   "name": "minijanus",
   "version": "0.6.1",
-  "description": "Really simple and minimal wrapper for talking to the Janus signalling API.",
-  "main": "minijanus.js",
+  "description": "A small Javascript wrapper for talking to the Janus WebRTC signalling API.",
+  "browser": "minijanus.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mozilla/minijanus.js.git"
+    "url": "https://github.com/mozilla/minijanus.js.git"
   },
   "keywords": [
-    "janus"
+    "janus",
+    "janus-gateway",
+    "webrtc"
   ],
   "author": "Marshall Quander <marshall@quander.me>",
   "license": "MPL-2.0",
