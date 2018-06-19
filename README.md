@@ -69,11 +69,11 @@ would instead wait to create the connection until the microphone permission was 
 To generate bundle.js:
 
 ```
-$ yarn build
+$ npm run build
 ```
 
 ## Testing
 
 ```
-$ yarn test
+$ npm test
 ```
