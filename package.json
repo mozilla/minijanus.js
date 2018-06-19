@@ -1,6 +1,6 @@
 {
   "name": "minijanus",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "A small Javascript wrapper for talking to the Janus WebRTC signalling API.",
   "browser": "minijanus.js",
   "repository": {
